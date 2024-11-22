@@ -29,16 +29,17 @@ def received_message(event):
         show_support_options(sender_id)
     elif message_text == "🚀 أريد الانضمام":
         show_join_info(sender_id)
-    else:
-        page.send(sender_id, "مرحبًا! اختر من الخيارات التالية:", quick_replies=[  
-            QuickReply(title="📚 أسعار الكورسات", payload=f"COURSES_PRICE_{sender_id}"),
-            QuickReply(title="💡 سعر الاشراف", payload=f"SUPERVISION_PRICE_{sender_id}"),
-            QuickReply(title="✅ هل المنصة معتمدة؟", payload=f"PLATFORM_APPROVAL_{sender_id}"),
-            QuickReply(title="📝 كيفية التسجيل؟", payload=f"REGISTRATION_{sender_id}"),
-            QuickReply(title="💬 تواصل مع الدعم", payload=f"SUPPORT_{sender_id}"),
-            QuickReply(title="🚀 أريد الانضمام", payload=f"JOIN_{sender_id}")
-        ])
-    
+else:
+    page.send(sender_id, "مرحبًا! اختر من الخيارات التالية:", quick_replies=[
+        QuickReply(title="📚 أسعار الكورسات", payload=f"COURSES_PRICE_{sender_id}"),
+        QuickReply(title="💡 سعر الاشراف", payload=f"SUPERVISION_PRICE_{sender_id}"),
+        QuickReply(title="✅ هل المنصة معتمدة؟", payload=f"PLATFORM_APPROVAL_{sender_id}"),
+        QuickReply(title="📝 كيفية التسجيل؟", payload=f"REGISTRATION_{sender_id}"),
+        QuickReply(title="💬 تواصل مع الدعم", payload=f"SUPPORT_{sender_id}"),
+        QuickReply(title="🚀 أريد الانضمام", payload=f"JOIN_{sender_id}")
+    ])
+    print(f"تم إرسال الرد للمستخدم: {sender_id}")  # استخدم هذا السطر للتحقق من الإرسال
+
     # تحديث حالة الرسالة
     USER_SEQ[sender_id] = message_text  # تحديث مع سجل الرسائل
 
