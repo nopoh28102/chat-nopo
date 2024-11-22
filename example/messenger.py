@@ -1,290 +1,239 @@
-# coding: utf-8
-import os
-parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.sys.path.insert(0,parentdir)
-
-import json
-from example.config import CONFIG
-from fbmq import Attachment, Template, QuickReply, NotificationType
+from fbmq import QuickReply, Template
 from example.fbpage import page
 
 USER_SEQ = {}
 
-
-@page.handle_optin
-def received_authentication(event):
-    sender_id = event.sender_id
-    recipient_id = event.recipient_id
-    time_of_auth = event.timestamp
-
-    pass_through_param = event.optin.get("ref")
-
-    print("Received authentication for user %s and page %s with pass "
-          "through param '%s' at %s" % (sender_id, recipient_id, pass_through_param, time_of_auth))
-
-    page.send(sender_id, "Authentication successful")
-
-
-@page.handle_echo
-def received_echo(event):
-    message = event.message
-    message_id = message.get("mid")
-    app_id = message.get("app_id")
-    metadata = message.get("metadata")
-    print("page id : %s , %s" % (page.page_id, page.page_name))
-    print("Received echo for message %s and app %s with metadata %s" % (message_id, app_id, metadata))
-
-
 @page.handle_message
 def received_message(event):
     sender_id = event.sender_id
-    recipient_id = event.recipient_id
-    time_of_message = event.timestamp
     message = event.message
-    print("Received message for user %s and page %s at %s with message:"
-          % (sender_id, recipient_id, time_of_message))
-    print(message)
 
-    seq = message.get("seq", 0)
-    message_id = message.get("mid")
-    app_id = message.get("app_id")
-    metadata = message.get("metadata")
+    if not message:
+        page.send(sender_id, "🚫 عذرًا، لم يتم استلام أي رسالة صالحة.")
+        return
 
     message_text = message.get("text")
-    message_attachments = message.get("attachments")
-    quick_reply = message.get("quick_reply")
+    
+    # التعامل مع الرسائل المدخلة من المستخدم
+    if message_text == "السلام عليكم":
+        page.send(sender_id, "عليكم السلام 😊") 
+    elif message_text == "📚 أسعار الكورسات":
+        show_course_prices(sender_id)
+    elif message_text == "💡 سعر الاشراف":
+        show_supervision_prices(sender_id)
+    elif message_text == "✅ هل المنصة معتمدة؟":
+        show_platform_approval(sender_id)
+    elif message_text == "📝 كيفية التسجيل؟":
+        show_registration_info(sender_id)
+    elif message_text == "💬 تواصل مع الدعم":
+        show_support_options(sender_id)
+    elif message_text == "🚀 أريد الانضمام":
+        show_join_info(sender_id)
+else:
+    page.send(sender_id, "مرحبًا! اختر من الخيارات التالية:", quick_replies=[
+        QuickReply(title="📚 أسعار الكورسات", payload=f"COURSES_PRICE_{sender_id}"),
+        QuickReply(title="💡 سعر الاشراف", payload=f"SUPERVISION_PRICE_{sender_id}"),
+        QuickReply(title="✅ هل المنصة معتمدة؟", payload=f"PLATFORM_APPROVAL_{sender_id}"),
+        QuickReply(title="📝 كيفية التسجيل؟", payload=f"REGISTRATION_{sender_id}"),
+        QuickReply(title="💬 تواصل مع الدعم", payload=f"SUPPORT_{sender_id}"),
+        QuickReply(title="🚀 أريد الانضمام", payload=f"JOIN_{sender_id}")
+    ])
+    print(f"تم إرسال الرد للمستخدم: {sender_id}")  # استخدم هذا السطر للتحقق من الإرسال
 
-    seq_id = sender_id + ':' + recipient_id
-    if USER_SEQ.get(seq_id, -1) >= seq:
-        print("Ignore duplicated request")
-        return None
-    else:
-        USER_SEQ[seq_id] = seq
-
-    if quick_reply:
-        quick_reply_payload = quick_reply.get('payload')
-        print("quick reply for message %s with payload %s" % (message_id, quick_reply_payload))
-
-        page.send(sender_id, "Quick reply tapped")
-
-    if message_text:
-        send_message(sender_id, message_text)
-    elif message_attachments:
-        page.send(sender_id, "Message with attachment received")
+    # تحديث حالة الرسالة
+    USER_SEQ[sender_id] = message_text  # تحديث مع سجل الرسائل
 
 
-@page.handle_delivery
-def received_delivery_confirmation(event):
-    delivery = event.delivery
-    message_ids = delivery.get("mids")
-    watermark = delivery.get("watermark")
 
-    if message_ids:
-        for message_id in message_ids:
-            print("Received delivery confirmation for message ID: %s" % message_id)
 
-    print("All message before %s were delivered." % watermark)
+
+def show_course_prices(sender_id):
+    USER_SEQ[sender_id] = "COURSES_PRICE"
+    page.send(sender_id, Template.Generic([ 
+        Template.GenericElement("كورس ABAT - فني تحليل سلوك تطبيقي", 
+                                subtitle="كورس فني معتمد لتعليم تحليل السلوك التطبيقي باستخدام تقنيات علمية متطورة لتقييم وتعديل السلوك 💡", 
+                                image_url="https://github.com/user-attachments/assets/5a42a654-144e-4ea0-a44f-d6f58ae95c73", 
+                                buttons=[Template.ButtonWeb("🌐 سجل الأن", "https://www.highnessc.com/abat-aba/"),
+                                         Template.ButtonPostBack("السعر 💰5000 ج", "PRICE_ABAT")]), 
+        Template.GenericElement("كورس QASP-S - مشرف توحد مؤهل", 
+                                subtitle="كورس معتمد لتأهيل مشرفي التوحد لقيادة فرق العمل وتقديم الدعم للأفراد ذوي التوحد 🎯", 
+                                image_url="https://github-production-user-asset-6210df.s3.amazonaws.com/135191663/388782998-a46138cd-feac-40a1-8eda-34851b566f51.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20241122%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241122T025945Z&X-Amz-Expires=300&X-Amz-Signature=bb0099d5e0615be7aefd194dacf61afafcaa945e4d3140e8b545efbb81fd78fa&X-Amz-SignedHeaders=host", 
+                                buttons=[Template.ButtonWeb("🌐 سجل الأن", "https://www.highnessc.com/qasps-aba/"),
+                                         Template.ButtonPostBack("السعر 💰15000 ج", "PRICE_QASP-S")]), 
+        Template.GenericElement("كورس QBA - محلل سلوك مؤهل", 
+                                subtitle="كورس متخصص لتأهيل محللي السلوك باستخدام أحدث الأساليب العلمية لتحليل السلوك وتقديم التدخلات السلوكية 🧠", 
+                                image_url="https://github.com/user-attachments/assets/50ead23c-e000-4f5a-b5be-23a24887f517", 
+                                buttons=[Template.ButtonWeb("🌐 سجل الأن", "https://www.highnessc.com/qba-certification/"),
+                                         Template.ButtonPostBack("السعر 💰25000 ج", "PRICE_QBA")])
+    ]))
+    show_main_menu(sender_id)
+
+
+
+
+def show_supervision_prices(sender_id):
+    """
+    عرض أسعار الإشراف المتاحة للمستخدم.
+    """
+    USER_SEQ[sender_id] = "SUPERVISION_PRICE"
+
+    page.send(sender_id, Template.Generic([ 
+        Template.GenericElement("اشراف ABAT - فني تحليل سلوك تطبيقي", 
+                                subtitle="احصل على الاشراف مع متخصيين وخبراء فى تحليل السلوك التطبيقي لتحقيق المتطلب الأول", 
+                                image_url="https://github.com/user-attachments/assets/62ebf9cd-048a-4f7a-aa6d-0807422d5322", 
+                                buttons = [Template.ButtonWeb("📩  راسلنا واتساب", "https://wa.me/+201152810161?text=مرحبًا، أريد الاستفسار عن إشراف ABAT")]),
+        Template.GenericElement("اشراف  QASP-S - مشرف توحد مؤهل", 
+                                subtitle="احصل على الاشراف مع متخصيين وخبراء فى تحليل السلوك التطبيقي لتحقيق المتطلب الأول", 
+                                image_url="https://github.com/user-attachments/assets/9fd2b39f-dbf0-4f7e-9009-65fe56542e34", 
+                                buttons = [Template.ButtonWeb("📩  راسلنا واتساب", "https://wa.me/+201152810161?text=مرحبًا، أريد الاستفسار عن إشراف QASP-S")]),
+
+        Template.GenericElement("اشراف QBA - محلل سلوك مؤهل", 
+                                subtitle="احصل على الاشراف مع متخصيين وخبراء فى تحليل السلوك التطبيقي لتحقيق المتطلب الأول", 
+                                image_url="https://github.com/user-attachments/assets/719a4380-887b-4a43-a5e6-9da9ca004a45", 
+                                buttons = [Template.ButtonWeb("📩  راسلنا واتساب", "https://wa.me/+201152810161?text=مرحبًا، أريد الاستفسار عن إشراف QBA")]),
+    ]))
+
+    show_main_menu(sender_id)
+
+
+
+
+def show_platform_approval(sender_id):
+    """
+    عرض حالة اعتماد المنصة.
+    
+    Args:
+    sender_id (str): معرف المرسل (المستخدم).
+    """
+    # Update the user's platform approval status
+    USER_SEQ[sender_id] = "PLATFORM_APPROVAL"
+
+    # Send the platform approval message
+    page.send(sender_id, "نعم، المنصة معتمدة من بورد QABA ✅\n"
+                          "ونحن شركاء مع منصة الأبعاد السبعة في السعودية 🇸🇦، حيث يشرف على المنصة فريق من BCBA وQBA معتمدين. 👩‍🎓👨‍🎓\n"
+                          "💡 خدماتنا تشمل:\n"
+                          "تقديم المتطلب الأول والثاني في ABAT، QASP-S، وQBA.\n"
+                          "💰 أسعارنا مخفضة لتتناسب مع السوق المصري، مع الحفاظ على أعلى جودة في التدريب والخدمات. 🏷️✨\n"
+                          "🔎 كيف تتأكد من اعتمادية المنصة؟\n"
+                          "بمجرد دخولك على موقعنا highnessc.com 🌐، ستجد جميع محللي السلوك والمشرفين مع سيرهم الذاتية.\n"
+                          "يمكنك أيضًا زيارة موقع bacb.com/bcba للتأكد بنفسك من اعتمادية المحللين.")
+    
+    # Correct usage of Template.ButtonWeb
+    image_url = "https://github.com/user-attachments/assets/6c299908-b154-4ab3-a3d2-fd0e16e5b911"  # استبدل الرابط بالرابط الصحيح للصورة
+    page.send(sender_id, Template.Generic(
+        elements=[
+            Template.GenericElement(
+                title="د/عبد الرحمن القرني",
+                subtitle="ماجستير تربية خاصة من Ball State University وطالب دكتوراه في جامعة الملك سعود ومحلل سلوك معتمد BCBA. خبرة 7 سنوات في مجال تحليل السلوك التطبيقي",
+                image_url=image_url,
+                buttons=[
+                    Template.ButtonWeb("شاهد شكل الشهادة", "https://drive.google.com/drive/folders/1CJ7fbCN0cO6DyWs2V8tYMBdFTu4Qiear?usp=drive_link")
+                ]
+            )
+        ]
+    ))
+
+    # Show the main menu after sending the information
+    show_main_menu(sender_id)
+
+
+
+
+def show_registration_info(sender_id):
+    """
+    عرض تفاصيل التسجيل في المنصة.
+    
+    Args:
+    sender_id (str): معرف المرسل (المستخدم).
+    """
+    USER_SEQ[sender_id] = "REGISTRATION"
+    
+    # Use Template.ButtonWeb correctly
+    page.send(sender_id, Template.Buttons(
+        text="🎥 اتبع الخطوات فى الفيديو المرفق",
+        buttons=[Template.ButtonWeb("اضغط للمشاهدة ▶️", "https://drive.google.com/file/d/1Tu_rt8y-43bs33NuhfyQz_a7U7z3x4SO/view")]
+    ))
+    show_main_menu(sender_id)
+
+
+
+
+def show_support_options(sender_id):
+    """
+    عرض خيارات الدعم المتاحة للمستخدم عبر منصات السوشيال ميديا.
+    """
+    USER_SEQ[sender_id] = "SUPPORT"
+
+    page.send(sender_id, Template.Generic([ 
+        Template.GenericElement("فيسبوك", 
+                                subtitle="تواصل مع الدعم عبر فيسبوك", 
+                                image_url="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg",  
+                                buttons=[Template.ButtonWeb("التواصل الآن", "https://m.me/100063887112387"),
+                                         Template.ButtonPhoneNumber("اتصل بنا", "+201152810161")]),
+        Template.GenericElement("واتساب", 
+                                subtitle="تواصل مع الدعم عبر واتساب", 
+                                image_url="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg",  
+                                buttons=[Template.ButtonWeb("التواصل الآن", "https://wa.me/+201152810161"),
+                                         Template.ButtonPhoneNumber("اتصل بنا", "+201152810161")]),
+        Template.GenericElement("إنستجرام", 
+                                subtitle="تواصل مع الدعم عبر إنستجرام", 
+                                image_url="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png",  
+                                buttons=[Template.ButtonWeb("التواصل الآن", "https://www.instagram.com/highness.aba/"),
+                                         Template.ButtonPhoneNumber("اتصل بنا", "+201152810161")])
+
+    ]))
+
+    show_main_menu(sender_id)
+
+
+
+
+
+
+def show_join_info(sender_id):
+    USER_SEQ[sender_id] = "JOIN"
+    page.send(sender_id, Template.Buttons(
+        text="📢 للانضمام إلى المنصة، اضغط على الزر أدناه: 👇",
+        buttons=[Template.ButtonWeb("✨ انضم الآن ✨", "https://form.jotform.com/242161912045044")]
+    ))    
+    show_main_menu(sender_id)
+
+
+
+def show_main_menu(sender_id):
+    page.send(sender_id, "اختر من الخيارات التالية:", quick_replies=[  
+        QuickReply(title="📚 أسعار الكورسات", payload=f"COURSES_PRICE_{sender_id}"),
+        QuickReply(title="💡 سعر الاشراف", payload=f"SUPERVISION_PRICE_{sender_id}"),
+        QuickReply(title="✅ هل المنصة معتمدة؟", payload=f"PLATFORM_APPROVAL_{sender_id}"),
+        QuickReply(title="📝 كيفية التسجيل؟", payload=f"REGISTRATION_{sender_id}"),
+        QuickReply(title="🎉 الخصومات المتاحة", payload=f"DISCOUNTS_{sender_id}"),
+        QuickReply(title="💬 تواصل مع الدعم", payload=f"SUPPORT_{sender_id}"),
+        QuickReply(title="🚀 أريد الانضمام", payload=f"JOIN_{sender_id}")
+    ])
+
+# Handling postbacks
+
+
 
 
 @page.handle_postback
 def received_postback(event):
     sender_id = event.sender_id
-    recipient_id = event.recipient_id
-    time_of_postback = event.timestamp
+    postback = event.postback
+    payload = postback.get('payload') if isinstance(postback, dict) else None
 
-    payload = event.postback_payload
-
-    print("Received postback for user %s and page %s with payload '%s' at %s"
-          % (sender_id, recipient_id, payload, time_of_postback))
-
-    page.send(sender_id, "Postback called")
-
-
-@page.handle_read
-def received_message_read(event):
-    watermark = event.read.get("watermark")
-    seq = event.read.get("seq")
-
-    print("Received message read event for watermark %s and sequence number %s" % (watermark, seq))
-
-
-@page.handle_account_linking
-def received_account_link(event):
-    sender_id = event.sender_id
-    status = event.account_linking.get("status")
-    auth_code = event.account_linking.get("authorization_code")
-
-    print("Received account link event with for user %s with status %s and auth code %s "
-          % (sender_id, status, auth_code))
-
-
-def send_message(recipient_id, text):
-    # If we receive a text message, check to see if it matches any special
-    # keywords and send back the corresponding example. Otherwise, just echo
-    # the text we received.
-    special_keywords = {
-        "image": send_image,
-        "gif": send_gif,
-        "audio": send_audio,
-        "video": send_video,
-        "file": send_file,
-        "button": send_button,
-        "generic": send_generic,
-        "receipt": send_receipt,
-        "quick reply": send_quick_reply,
-        "read receipt": send_read_receipt,
-        "typing on": send_typing_on,
-        "typing off": send_typing_off,
-        "account linking": send_account_linking
-    }
-
-    if text in special_keywords:
-        special_keywords[text](recipient_id)
+    if payload:
+        if "COURSES_PRICE_" in payload:
+            show_course_prices(sender_id)
+        elif "SUPERVISION_PRICE_" in payload:
+            show_supervision_prices(sender_id)
+        elif "PLATFORM_APPROVAL_" in payload:
+            show_platform_approval(sender_id)
+        elif "REGISTRATION_" in payload:
+            show_registration_info(sender_id)
+        elif "SUPPORT_" in payload:
+            show_support_options(sender_id)
+        elif "JOIN_" in payload:
+            show_join_info(sender_id)
     else:
-        page.send(recipient_id, text, callback=send_text_callback, notification_type=NotificationType.REGULAR)
-
-
-def send_text_callback(payload, response):
-    print("SEND CALLBACK")
-
-
-def send_image(recipient):
-    page.send(recipient, Attachment.Image(CONFIG['SERVER_URL'] + "/assets/rift.png"))
-
-
-def send_gif(recipient):
-    page.send(recipient, Attachment.Image(CONFIG['SERVER_URL'] + "/assets/instagram_logo.gif"))
-
-
-def send_audio(recipient):
-    page.send(recipient, Attachment.Audio(CONFIG['SERVER_URL'] + "/assets/sample.mp3"))
-
-
-def send_video(recipient):
-    page.send(recipient, Attachment.Video(CONFIG['SERVER_URL'] + "/assets/allofus480.mov"))
-
-
-def send_file(recipient):
-    page.send(recipient, Attachment.File(CONFIG['SERVER_URL'] + "/assets/test.txt"))
-
-
-def send_button(recipient):
-    """
-    Shortcuts are supported
-    page.send(recipient, Template.Buttons("hello", [
-        {'type': 'web_url', 'title': 'Open Web URL', 'value': 'https://www.oculus.com/en-us/rift/'},
-        {'type': 'postback', 'title': 'tigger Postback', 'value': 'DEVELOPED_DEFINED_PAYLOAD'},
-        {'type': 'phone_number', 'title': 'Call Phone Number', 'value': '+16505551234'},
-    ]))
-    """
-    page.send(recipient, Template.Buttons("hello", [
-        Template.ButtonWeb("Open Web URL", "https://www.oculus.com/en-us/rift/"),
-        Template.ButtonPostBack("trigger Postback", "DEVELOPED_DEFINED_PAYLOAD"),
-        Template.ButtonPhoneNumber("Call Phone Number", "+16505551234")
-    ]))
-
-
-@page.callback(['DEVELOPED_DEFINED_PAYLOAD'])
-def callback_clicked_button(payload, event):
-    print(payload, event)
-
-
-def send_generic(recipient):
-    page.send(recipient, Template.Generic([
-        Template.GenericElement("rift",
-                                subtitle="Next-generation virtual reality",
-                                item_url="https://www.oculus.com/en-us/rift/",
-                                image_url=CONFIG['SERVER_URL'] + "/assets/rift.png",
-                                buttons=[
-                                    Template.ButtonWeb("Open Web URL", "https://www.oculus.com/en-us/rift/"),
-                                    Template.ButtonPostBack("tigger Postback", "DEVELOPED_DEFINED_PAYLOAD"),
-                                    Template.ButtonPhoneNumber("Call Phone Number", "+16505551234")
-                                ]),
-        Template.GenericElement("touch",
-                                subtitle="Your Hands, Now in VR",
-                                item_url="https://www.oculus.com/en-us/touch/",
-                                image_url=CONFIG['SERVER_URL'] + "/assets/touch.png",
-                                buttons=[
-                                    {'type': 'web_url', 'title': 'Open Web URL',
-                                     'value': 'https://www.oculus.com/en-us/rift/'},
-                                    {'type': 'postback', 'title': 'tigger Postback',
-                                     'value': 'DEVELOPED_DEFINED_PAYLOAD'},
-                                    {'type': 'phone_number', 'title': 'Call Phone Number', 'value': '+16505551234'},
-                                ])
-    ]))
-
-
-def send_receipt(recipient):
-    receipt_id = "order1357"
-    element = Template.ReceiptElement(title="Oculus Rift",
-                                      subtitle="Includes: headset, sensor, remote",
-                                      quantity=1,
-                                      price=599.00,
-                                      currency="USD",
-                                      image_url=CONFIG['SERVER_URL'] + "/assets/riftsq.png"
-                                      )
-
-    address = Template.ReceiptAddress(street_1="1 Hacker Way",
-                                      street_2="",
-                                      city="Menlo Park",
-                                      postal_code="94025",
-                                      state="CA",
-                                      country="US")
-
-    summary = Template.ReceiptSummary(subtotal=698.99,
-                                      shipping_cost=20.00,
-                                      total_tax=57.67,
-                                      total_cost=626.66)
-
-    adjustment = Template.ReceiptAdjustment(name="New Customer Discount", amount=-50)
-
-    page.send(recipient, Template.Receipt(recipient_name='Peter Chang',
-                                          order_number=receipt_id,
-                                          currency='USD',
-                                          payment_method='Visa 1234',
-                                          timestamp="1428444852",
-                                          elements=[element],
-                                          address=address,
-                                          summary=summary,
-                                          adjustments=[adjustment]))
-
-
-def send_quick_reply(recipient):
-    """
-    shortcuts are supported
-    page.send(recipient, "What's your favorite movie genre?",
-                quick_replies=[{'title': 'Action', 'payload': 'PICK_ACTION'},
-                               {'title': 'Comedy', 'payload': 'PICK_COMEDY'}, ],
-                metadata="DEVELOPER_DEFINED_METADATA")
-    """
-    page.send(recipient, "What's your favorite movie genre?",
-              quick_replies=[QuickReply(title="Action", payload="PICK_ACTION"),
-                             QuickReply(title="Comedy", payload="PICK_COMEDY")],
-              metadata="DEVELOPER_DEFINED_METADATA")
-
-
-@page.callback(['PICK_ACTION'])
-def callback_picked_genre(payload, event):
-    print(payload, event)
-
-
-def send_read_receipt(recipient):
-    page.mark_seen(recipient)
-
-
-def send_typing_on(recipient):
-    page.typing_on(recipient)
-
-
-def send_typing_off(recipient):
-    page.typing_off(recipient)
-
-
-def send_account_linking(recipient):
-    page.send(recipient, Template.AccountLink(text="Welcome. Link your account.",
-                                              account_link_url=CONFIG['SERVER_URL'] + "/authorize",
-                                              account_unlink_button=True))
-
-
-def send_text_message(recipient, text):
-    page.send(recipient, text, metadata="DEVELOPER_DEFINED_METADATA")
+        print(f"Postback received but no payload: {event}")
