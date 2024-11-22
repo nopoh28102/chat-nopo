@@ -1,3 +1,7 @@
 {
-  "start": "python server.py"
+  "phases": {
+    "start": {
+      "cmd": "python server.py"
+    }
+  }
 }
